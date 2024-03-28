@@ -12,15 +12,16 @@ repos:
         files: '.*'
         pass_filenames: false
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v3.2.0
     hooks:
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
 -   repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.1.13
+    # Ruff version.
+    rev: 'v0.0.267'
     hooks:
     -   id: ruff
-        types_or: [ python, pyi, jupyter ]
-        args: [ --fix ]
-    -   id: ruff-format
-        types_or: [ python, pyi, jupyter ]
+-   repo: https://github.com/psf/black
+    rev: '23.3.0'
+    hooks:
+    -   id: black

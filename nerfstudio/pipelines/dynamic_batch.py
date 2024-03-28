@@ -17,7 +17,7 @@ A pipeline that dynamically chooses the number of rays to sample.
 """
 
 from dataclasses import dataclass, field
-from typing import Literal, Optional, Type
+from typing import Literal, Type, Optional
 
 import torch
 from torch.cuda.amp.grad_scaler import GradScaler

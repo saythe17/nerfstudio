@@ -1,11 +1,7 @@
 ARG CUDA_VERSION=11.8.0
 ARG OS_VERSION=22.04
-ARG USER_ID=1000
 # Define base image.
 FROM nvidia/cuda:${CUDA_VERSION}-devel-ubuntu${OS_VERSION}
-ARG CUDA_VERSION
-ARG OS_VERSION
-ARG USER_ID
 
 # metainformation
 LABEL org.opencontainers.image.version = "0.1.18"
@@ -103,7 +99,7 @@ RUN git clone --branch 3.8 https://github.com/colmap/colmap.git --single-branch 
     rm -rf colmap
 
 # Create non root user and setup environment.
-RUN useradd -m -d /home/user -g root -G sudo -u ${USER_ID} user
+RUN useradd -m -d /home/user -g root -G sudo -u 1000 user
 RUN usermod -aG sudo user
 # Set user password
 RUN echo "user:user" | chpasswd
@@ -111,7 +107,7 @@ RUN echo "user:user" | chpasswd
 RUN echo '%sudo ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
 
 # Switch to new uer and workdir.
-USER ${USER_ID}
+USER 1000
 WORKDIR /home/user
 
 # Add local user binary folder to PATH variable.
@@ -119,60 +115,55 @@ ENV PATH="${PATH}:/home/user/.local/bin"
 SHELL ["/bin/bash", "-c"]
 
 # Upgrade pip and install packages.
-RUN python3.10 -m pip install --no-cache-dir --upgrade pip setuptools pathtools promise pybind11
+RUN python3.10 -m pip install --upgrade pip setuptools pathtools promise pybind11
 # Install pytorch and submodules
-RUN CUDA_VER=${CUDA_VERSION%.*} && CUDA_VER=${CUDA_VER//./} && python3.10 -m pip install --no-cache-dir \
+RUN CUDA_VER=${CUDA_VERSION%.*} && CUDA_VER=${CUDA_VER//./} && python3.10 -m pip install \
     torch==2.0.1+cu${CUDA_VER} \
     torchvision==0.15.2+cu${CUDA_VER} \
         --extra-index-url https://download.pytorch.org/whl/cu${CUDA_VER}
 # Install tynyCUDNN (we need to set the target architectures as environment variable first).
 ENV TCNN_CUDA_ARCHITECTURES=${CUDA_ARCHITECTURES}
-RUN python3.10 -m pip install --no-cache-dir git+https://github.com/NVlabs/tiny-cuda-nn.git@v1.6#subdirectory=bindings/torch
+RUN python3.10 -m pip install git+https://github.com/NVlabs/tiny-cuda-nn.git@v1.6#subdirectory=bindings/torch
 
 # Install pycolmap, required by hloc.
 RUN git clone --branch v0.4.0 --recursive https://github.com/colmap/pycolmap.git && \
     cd pycolmap && \
-    python3.10 -m pip install --no-cache-dir . && \
+    python3.10 -m pip install . && \
     cd ..
 
-# Install hloc 1.4 as alternative feature detector and matcher option for nerfstudio.
+# Install hloc master (last release (1.3) is too old) as alternative feature detector and matcher option for nerfstudio.
 RUN git clone --branch master --recursive https://github.com/cvg/Hierarchical-Localization.git && \
     cd Hierarchical-Localization && \
-    git checkout v1.4 && \
-    python3.10 -m pip install --no-cache-dir -e . && \
+    python3.10 -m pip install -e . && \
     cd ..
 
 # Install pyceres from source
 RUN git clone --branch v1.0 --recursive https://github.com/cvg/pyceres.git && \
     cd pyceres && \
-    python3.10 -m pip install --no-cache-dir -e . && \
+    python3.10 -m pip install -e . && \
     cd ..
 
 # Install pixel perfect sfm.
-RUN git clone --recursive https://github.com/cvg/pixel-perfect-sfm.git && \
+RUN git clone --branch v1.0 --recursive https://github.com/cvg/pixel-perfect-sfm.git && \
     cd pixel-perfect-sfm && \
-    git reset --hard 40f7c1339328b2a0c7cf71f76623fb848e0c0357 && \
-    git clean -df && \
-    python3.10 -m pip install --no-cache-dir -e . && \
+    python3.10 -m pip install -e . && \
     cd ..
 
-RUN python3.10 -m pip install --no-cache-dir omegaconf
+RUN python3.10 -m pip install omegaconf
 # Copy nerfstudio folder and give ownership to user.
 ADD . /home/user/nerfstudio
 USER root
 RUN chown -R user /home/user/nerfstudio
-USER ${USER_ID}
+USER 1000
 
 # Install nerfstudio dependencies.
 RUN cd nerfstudio && \
-    python3.10 -m pip install --no-cache-dir -e . && \
+    python3.10 -m pip install -e . && \
     cd ..
 
 # Change working directory
 WORKDIR /workspace
 
-# Install nerfstudio cli auto completion
-RUN ns-install-cli --mode install
+# Install nerfstudio cli auto completion and enter shell if no command was provided.
+CMD ns-install-cli --mode install && /bin/bash
 
-# Bash as default entrypoint.
-CMD /bin/bash -l

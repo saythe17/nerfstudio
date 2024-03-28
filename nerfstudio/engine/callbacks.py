@@ -27,7 +27,6 @@ from torch.cuda.amp.grad_scaler import GradScaler
 from nerfstudio.engine.optimizers import Optimizers
 
 if TYPE_CHECKING:
-    from nerfstudio.engine.trainer import Trainer
     from nerfstudio.pipelines.base_pipeline import Pipeline
 
 
@@ -44,8 +43,6 @@ class TrainingCallbackAttributes:
     """gradient scalers"""
     pipeline: Optional["Pipeline"]  # Prevent circular import.
     """reference to training pipeline"""
-    trainer: Optional["Trainer"]  # Prevent circular import.
-    """reference to trainer"""
 
 
 class TrainingCallbackLocation(Enum):

@@ -7,9 +7,14 @@ import torch
 from torch import nn
 
 from nerfstudio.cameras.cameras import Cameras
-from nerfstudio.data.datamanagers.base_datamanager import VanillaDataManagerConfig
 from nerfstudio.data.datasets.base_dataset import DataparserOutputs, InputDataset
-from nerfstudio.pipelines.base_pipeline import Model, ModelConfig, VanillaPipeline, VanillaPipelineConfig
+from nerfstudio.pipelines.base_pipeline import (
+    Model,
+    ModelConfig,
+    VanillaPipeline,
+    VanillaPipelineConfig,
+)
+from nerfstudio.data.datamanagers.base_datamanager import VanillaDataManagerConfig
 
 
 class MockedDataManager:

@@ -175,17 +175,13 @@ class EvalDataloader(DataLoader):
     def __next__(self) -> Tuple[RayBundle, Dict]:
         """Returns the next batch of data"""
 
-    def get_camera(self, image_idx: int = 0) -> Tuple[Cameras, Dict]:
+    def get_camera(self, image_idx: int = 0) -> Cameras:
         """Get camera for the given image index
 
         Args:
             image_idx: Camera image index
         """
-        camera = self.cameras[image_idx : image_idx + 1]
-        batch = self.input_dataset[image_idx]
-        batch = get_dict_to_torch(batch, device=self.device, exclude=["image"])
-        assert isinstance(batch, dict)
-        return camera, batch
+        return self.cameras[image_idx]
 
     def get_data_from_image_idx(self, image_idx: int) -> Tuple[RayBundle, Dict]:
         """Returns the data for a specific image index.
@@ -230,9 +226,9 @@ class FixedIndicesEvalDataloader(EvalDataloader):
     def __next__(self):
         if self.count < len(self.image_indices):
             image_idx = self.image_indices[self.count]
-            camera, batch = self.get_camera(image_idx)
+            ray_bundle, batch = self.get_data_from_image_idx(image_idx)
             self.count += 1
-            return camera, batch
+            return ray_bundle, batch
         raise StopIteration
 
 
@@ -249,5 +245,5 @@ class RandIndicesEvalDataloader(EvalDataloader):
     def __next__(self):
         # choose a random image index
         image_idx = random.randint(0, len(self.cameras) - 1)
-        camera, batch = self.get_camera(image_idx)
-        return camera, batch
+        ray_bundle, batch = self.get_data_from_image_idx(image_idx)
+        return ray_bundle, batch

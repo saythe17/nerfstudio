@@ -25,6 +25,9 @@ from typing import Any, Dict, List, Literal, Tuple, Type, cast
 import torch
 import torch.nn.functional as F
 from torch.nn import Parameter
+from torchmetrics import PeakSignalNoiseRatio
+from torchmetrics.functional import structural_similarity_index_measure
+from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
 
 from nerfstudio.cameras.rays import RayBundle
 from nerfstudio.field_components.encodings import NeRFEncoding
@@ -33,9 +36,19 @@ from nerfstudio.field_components.spatial_distortions import SceneContraction
 from nerfstudio.fields.nerfacto_field import NerfactoField
 from nerfstudio.fields.sdf_field import SDFFieldConfig
 from nerfstudio.fields.vanilla_nerf_field import NeRFField
-from nerfstudio.model_components.losses import L1Loss, MSELoss, ScaleAndShiftInvariantLoss, monosdf_normal_loss
+from nerfstudio.model_components.losses import (
+    L1Loss,
+    MSELoss,
+    ScaleAndShiftInvariantLoss,
+    monosdf_normal_loss,
+)
 from nerfstudio.model_components.ray_samplers import LinearDisparitySampler
-from nerfstudio.model_components.renderers import AccumulationRenderer, DepthRenderer, RGBRenderer, SemanticRenderer
+from nerfstudio.model_components.renderers import (
+    AccumulationRenderer,
+    DepthRenderer,
+    RGBRenderer,
+    SemanticRenderer,
+)
 from nerfstudio.model_components.scene_colliders import AABBBoxCollider, NearFarCollider
 from nerfstudio.models.base_model import Model, ModelConfig
 from nerfstudio.utils import colormaps
@@ -66,7 +79,7 @@ class SurfaceModelConfig(ModelConfig):
     """Monocular normal consistency loss multiplier."""
     mono_depth_loss_mult: float = 0.0
     """Monocular depth consistency loss multiplier."""
-    sdf_field: SDFFieldConfig = field(default_factory=SDFFieldConfig)
+    sdf_field: SDFFieldConfig = SDFFieldConfig()
     """Config for SDF Field"""
     background_model: Literal["grid", "mlp", "none"] = "mlp"
     """background models"""
@@ -153,10 +166,6 @@ class SurfaceModel(Model):
         self.depth_loss = ScaleAndShiftInvariantLoss(alpha=0.5, scales=1)
 
         # metrics
-        from torchmetrics.functional import structural_similarity_index_measure
-        from torchmetrics.image import PeakSignalNoiseRatio
-        from torchmetrics.image.lpip import LearnedPerceptualImagePatchSimilarity
-
         self.psnr = PeakSignalNoiseRatio(data_range=1.0)
         self.ssim = structural_similarity_index_measure
         self.lpips = LearnedPerceptualImagePatchSimilarity()
@@ -284,12 +293,7 @@ class SurfaceModel(Model):
         """
         loss_dict = {}
         image = batch["image"].to(self.device)
-        pred_image, image = self.renderer_rgb.blend_background_for_loss_computation(
-            pred_image=outputs["rgb"],
-            pred_accumulation=outputs["accumulation"],
-            gt_image=image,
-        )
-        loss_dict["rgb_loss"] = self.rgb_loss(image, pred_image)
+        loss_dict["rgb_loss"] = self.rgb_loss(image, outputs["rgb"])
         if self.training:
             # eikonal loss
             grad_theta = outputs["eik_grad"]
@@ -333,7 +337,6 @@ class SurfaceModel(Model):
         """
         metrics_dict = {}
         image = batch["image"].to(self.device)
-        image = self.renderer_rgb.blend_background(image)
         metrics_dict["psnr"] = self.psnr(outputs["rgb"], image)
         return metrics_dict
 
@@ -349,7 +352,6 @@ class SurfaceModel(Model):
             A dictionary of metrics.
         """
         image = batch["image"].to(self.device)
-        image = self.renderer_rgb.blend_background(image)
         rgb = outputs["rgb"]
         acc = colormaps.apply_colormap(outputs["accumulation"])
 

@@ -14,15 +14,14 @@
 
 """Utility helper functions for generative 3D models"""
 
+import torch
+from torch import Tensor
+from jaxtyping import Float
+from typing_extensions import Literal
 from typing import Union
 
-import torch
-from jaxtyping import Float
-from torch import Tensor
-from typing_extensions import Literal
-
-from nerfstudio.generative.deepfloyd import DeepFloyd
 from nerfstudio.generative.stable_diffusion import StableDiffusion
+from nerfstudio.generative.deepfloyd import DeepFloyd
 
 
 class PositionalTextEmbeddings:
